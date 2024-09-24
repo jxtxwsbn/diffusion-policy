@@ -299,6 +299,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             this_nobs = dict_apply(nobs, 
                 lambda x: x[:,:self.n_obs_steps,...].reshape(-1,*x.shape[2:]))
             nobs_features = self.obs_encoder(this_nobs)
+
+            print(this_nobs['image'].shape,'******************')
             # reshape back to B, Do
             global_cond = nobs_features.reshape(batch_size, -1)
         else:

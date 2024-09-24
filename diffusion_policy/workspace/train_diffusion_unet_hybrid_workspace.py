@@ -72,6 +72,7 @@ class TrainDiffusionUnetHybridWorkspace(BaseWorkspace):
         dataset: BaseImageDataset
         dataset = hydra.utils.instantiate(cfg.task.dataset)
         assert isinstance(dataset, BaseImageDataset)
+
         train_dataloader = DataLoader(dataset, **cfg.dataloader)
         normalizer = dataset.get_normalizer()
 
@@ -161,6 +162,17 @@ class TrainDiffusionUnetHybridWorkspace(BaseWorkspace):
                         batch = dict_apply(batch, lambda x: x.to(device, non_blocking=True))
                         if train_sampling_batch is None:
                             train_sampling_batch = batch
+                        print('====batch')
+                        
+                        for k,v in batch.items():
+                            if isinstance(v, dict):
+                                print(k)
+                                for kk,vv in v.items():
+                                    print(kk, vv.shape)
+                            else:
+                                print(k, v.shape)
+
+                            print('=========================')
 
                         # compute loss
                         raw_loss = self.model.compute_loss(batch)
@@ -288,9 +300,12 @@ class TrainDiffusionUnetHybridWorkspace(BaseWorkspace):
     version_base=None,
     config_path=str(pathlib.Path(__file__).parent.parent.joinpath("config")), 
     config_name=pathlib.Path(__file__).stem)
+
+
 def main(cfg):
     workspace = TrainDiffusionUnetHybridWorkspace(cfg)
     workspace.run()
+
 
 if __name__ == "__main__":
     main()
