@@ -300,7 +300,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                 lambda x: x[:,:self.n_obs_steps,...].reshape(-1,*x.shape[2:]))
             nobs_features = self.obs_encoder(this_nobs)
 
-            print(this_nobs['image'].shape,'******************')
+            # print(this_nobs['image'].shape,'******************')
             # reshape back to B, Do
             global_cond = nobs_features.reshape(batch_size, -1)
         else:
@@ -314,6 +314,14 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
 
         # generate impainting mask
         condition_mask = self.mask_generator(trajectory.shape)
+        print(condition_mask.shape,'***************')
+        print(condition_mask[0,:,0])
+        print(condition_mask[1,:,0])
+
+        print(condition_mask[0,:,1])
+        print(condition_mask[2,:,0])
+
+        print(print(trajectory.shape,'***************'))
 
         # Sample noise that we'll add to the images
         noise = torch.randn(trajectory.shape, device=trajectory.device)
@@ -333,7 +341,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
 
         # apply conditioning
         noisy_trajectory[condition_mask] = cond_data[condition_mask]
-        
+        print(local_cond, global_cond.shape)
         # Predict the noise residual
         pred = self.model(noisy_trajectory, timesteps, 
             local_cond=local_cond, global_cond=global_cond)
