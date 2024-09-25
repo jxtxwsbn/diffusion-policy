@@ -145,6 +145,9 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             cond_predict_scale=cond_predict_scale
         )
 
+        # print(obs_encoder)
+        
+
         self.obs_encoder = obs_encoder
         self.model = model
         self.noise_scheduler = noise_scheduler
@@ -220,6 +223,10 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         assert 'past_action' not in obs_dict # not implemented yet
         # normalize input
         nobs = self.normalizer.normalize(obs_dict)
+        # from utils import visualize_pusht_images_sequnece
+        # print(nobs['image'].shape,'==================================!!')
+        # print(nobs['agent_pos'].shape,'==================================!!')
+        # visualize_pusht_images_sequnece(images=nobs['image'].clone().cpu()[:,0,:,:,:])
         value = next(iter(nobs.values()))
         B, To = value.shape[:2]
         T = self.horizon
@@ -243,16 +250,16 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             # empty data for action
             cond_data = torch.zeros(size=(B, T, Da), device=device, dtype=dtype)
             cond_mask = torch.zeros_like(cond_data, dtype=torch.bool)
-        else:
-            # condition through impainting
-            this_nobs = dict_apply(nobs, lambda x: x[:,:To,...].reshape(-1,*x.shape[2:]))
-            nobs_features = self.obs_encoder(this_nobs)
-            # reshape back to B, To, Do
-            nobs_features = nobs_features.reshape(B, To, -1)
-            cond_data = torch.zeros(size=(B, T, Da+Do), device=device, dtype=dtype)
-            cond_mask = torch.zeros_like(cond_data, dtype=torch.bool)
-            cond_data[:,:To,Da:] = nobs_features
-            cond_mask[:,:To,Da:] = True
+        # else:
+        #     # condition through impainting
+        #     this_nobs = dict_apply(nobs, lambda x: x[:,:To,...].reshape(-1,*x.shape[2:]))
+        #     nobs_features = self.obs_encoder(this_nobs)
+        #     # reshape back to B, To, Do
+        #     nobs_features = nobs_features.reshape(B, To, -1)
+        #     cond_data = torch.zeros(size=(B, T, Da+Do), device=device, dtype=dtype)
+        #     cond_mask = torch.zeros_like(cond_data, dtype=torch.bool)
+        #     cond_data[:,:To,Da:] = nobs_features
+        #     cond_mask[:,:To,Da:] = True
 
         # run sampling
         nsample = self.conditional_sample(
@@ -261,7 +268,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             local_cond=local_cond,
             global_cond=global_cond,
             **self.kwargs)
-        
+        # print('n_sample',nsample.shape)
         # unnormalize prediction
         naction_pred = nsample[...,:Da]
         action_pred = self.normalizer['action'].unnormalize(naction_pred)
@@ -270,11 +277,13 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         start = To - 1
         end = start + self.n_action_steps
         action = action_pred[:,start:end]
+        # print(action.shape,start,end)
         
         result = {
             'action': action,
             'action_pred': action_pred
         }
+        # print(result,'evallll')
         return result
 
     # ========= training  ============
@@ -284,8 +293,35 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
     def compute_loss(self, batch):
         # normalize input
         assert 'valid_mask' not in batch
+        
+        # print(batch['obs']['image'][0].shape)
+        # print('***********************')
+        # print('agent_pose', batch['obs']['agent_pos'].shape)
+        # print(batch['obs']['agent_pos'][0,:,0])
+        # print('agent_action',batch['action'].shape)
+        # print(batch['action'][0,:,0])
+        # print('***********************')
+        
+        # from utils import visualize_pusht_images_sequnece, pos2pixel, pixel2map    
+        # print(batch['obs']['image'][0,0])
+        # print(batch['obs']['agent_pos'][0])
+
+        # pos_pix=pos2pixel(batch['obs']['agent_pos'][0])
+        # print(pos_pix,'=====')
+        # action_pix = pos2pixel(batch['action'][0])
+        # action_map = pixel2map(action_pix)
+        # print(action_pix)
+        # print(action_map)
+        # visualize_pusht_images_sequnece(batch['obs']['image'][0].clone().cpu(), pos=pos_pix.cpu(), action=action_pix.cpu(), title='before normalization')
+                        
         nobs = self.normalizer.normalize(batch['obs'])
         nactions = self.normalizer['action'].normalize(batch['action'])
+        
+        # from utils import visualize_pusht_images_sequnece 
+        # print(nobs['image'][0,0])
+        # print(nobs['agent_pos'][0])   
+        # visualize_pusht_images_sequnece(nobs['image'][0].clone().cpu(), title='after normalization')
+        
         batch_size = nactions.shape[0]
         horizon = nactions.shape[1]
 
@@ -299,10 +335,12 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             this_nobs = dict_apply(nobs, 
                 lambda x: x[:,:self.n_obs_steps,...].reshape(-1,*x.shape[2:]))
             nobs_features = self.obs_encoder(this_nobs)
-
+            # print(this_nobs.shape)
+            # print(nobs_features.shape,'+++++')
             # print(this_nobs['image'].shape,'******************')
             # reshape back to B, Do
             global_cond = nobs_features.reshape(batch_size, -1)
+            # print(global_cond.shape)
         else:
             # reshape B, T, ... to B*T
             this_nobs = dict_apply(nobs, lambda x: x.reshape(-1, *x.shape[2:]))
@@ -314,14 +352,14 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
 
         # generate impainting mask
         condition_mask = self.mask_generator(trajectory.shape)
-        print(condition_mask.shape,'***************')
-        print(condition_mask[0,:,0])
-        print(condition_mask[1,:,0])
+        # print(condition_mask.shape,'***************')
+        # print(condition_mask[0,:,0])
+        # print(condition_mask[1,:,0])
 
-        print(condition_mask[0,:,1])
-        print(condition_mask[2,:,0])
+        # print(condition_mask[0,:,1])
+        # print(condition_mask[2,:,0])
 
-        print(print(trajectory.shape,'***************'))
+        # print(print(trajectory.shape,'***************'))
 
         # Sample noise that we'll add to the images
         noise = torch.randn(trajectory.shape, device=trajectory.device)
@@ -329,8 +367,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         # Sample a random timestep for each image
         timesteps = torch.randint(
             0, self.noise_scheduler.config.num_train_timesteps, 
-            (bsz,), device=trajectory.device
-        ).long()
+            (bsz,), device=trajectory.device).long()
         # Add noise to the clean images according to the noise magnitude at each timestep
         # (this is the forward diffusion process)
         noisy_trajectory = self.noise_scheduler.add_noise(
@@ -341,7 +378,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
 
         # apply conditioning
         noisy_trajectory[condition_mask] = cond_data[condition_mask]
-        print(local_cond, global_cond.shape)
+        # print(local_cond, global_cond.shape)
         # Predict the noise residual
         pred = self.model(noisy_trajectory, timesteps, 
             local_cond=local_cond, global_cond=global_cond)

@@ -1,4 +1,4 @@
-_target_: diffusion_policy.workspace.train_diffusion_unet_hybrid_workspace.TrainDiffusionUnetHybridWorkspace
+_target_: diffusion_policy.workspace.train_diffusion_unet_hybrid_workspace2.TrainDiffusionUnetHybridWorkspace
 checkpoint:
   save_last_ckpt: true
   save_last_snapshot: false
@@ -53,7 +53,7 @@ optimizer:
   weight_decay: 1.0e-06
 past_action_visible: false
 policy:
-  _target_: diffusion_policy.policy.diffusion_unet_hybrid_image_policy.DiffusionUnetHybridImagePolicy
+  _target_: diffusion_policy.policy.diffusion_unet_hybrid_image_policy2.DiffusionUnetHybridImagePolicy
   cond_predict_scale: true
   crop_shape:
   - 84
@@ -166,7 +166,7 @@ training:
   lr_warmup_steps: 500
   max_train_steps: null
   max_val_steps: null
-  num_epochs: 3050
+  num_epochs: 300
   resume: true
   rollout_every: 50
   sample_every: 5

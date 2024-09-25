@@ -19,8 +19,9 @@ import json
 from diffusion_policy.workspace.base_workspace import BaseWorkspace
 
 @click.command()
-@click.option('-c', '--checkpoint', required=True)
-@click.option('-o', '--output_dir', required=True)
+# @click.option('-c', '--checkpoint', required=True, default='data/low_dim_pusht_0550-test_mean_score=0.969.ckpt')
+@click.option('-c', '--checkpoint', required=True, default='data/image_pusht_0500-test_mean_score=0.884.ckpt')
+@click.option('-o', '--output_dir', required=True, default='data/pusht_eval_output')
 @click.option('-d', '--device', default='cuda:0')
 def main(checkpoint, output_dir, device):
     if os.path.exists(output_dir):
@@ -31,6 +32,11 @@ def main(checkpoint, output_dir, device):
     payload = torch.load(open(checkpoint, 'rb'), pickle_module=dill)
     cfg = payload['cfg']
     cls = hydra.utils.get_class(cfg._target_)
+    
+    print(cfg,)
+    cfg.task.env_runner.n_train=6
+    cfg.task.env_runner.n_test=10
+
     workspace = cls(cfg, output_dir=output_dir)
     workspace: BaseWorkspace
     workspace.load_payload(payload, exclude_keys=None, include_keys=None)

@@ -247,5 +247,5 @@ class PushTImageRunner(BaseImageRunner):
             name = prefix+'mean_score'
             value = np.mean(value)
             log_data[name] = value
-
+        # print(log_data,'+++++')
         return log_data
