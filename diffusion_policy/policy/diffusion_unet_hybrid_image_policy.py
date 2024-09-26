@@ -36,6 +36,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             cond_predict_scale=True,
             obs_encoder_group_norm=False,
             eval_fixed_crop=False,
+            fixed_crop = False,
             # parameters passed to step
             **kwargs):
         super().__init__()
@@ -111,7 +112,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                     num_channels=x.num_features)
             )
             # obs_encoder.obs_nets['agentview_image'].nets[0].nets
-        
+        print('fixed crop during training is:', fixed_crop)
         # obs_encoder.obs_randomizers['agentview_image']
         if eval_fixed_crop:
             replace_submodules(
@@ -122,7 +123,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                     crop_height=x.crop_height,
                     crop_width=x.crop_width,
                     num_crops=x.num_crops,
-                    pos_enc=x.pos_enc
+                    pos_enc=x.pos_enc,
+                    fixed_crop = fixed_crop
                 )
             )
 

@@ -63,6 +63,7 @@ policy:
   - 512
   - 1024
   - 2048
+  fixed_crop: False
   eval_fixed_crop: true
   horizon: 16
   kernel_size: 5
