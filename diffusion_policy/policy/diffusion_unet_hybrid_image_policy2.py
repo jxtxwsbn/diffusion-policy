@@ -179,22 +179,34 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             
             imge_shape = nobs['image'].shape
             print('image shape',imge_shape)
+            visualize_pusht_images_sequnece(nobs['image'][:,0,:,:].cpu())
+            visualize_pusht_images_sequnece(nobs['image'][:,1,:,:].cpu())
+
             nobs['image'] = nobs['image'][:,:self.n_obs_steps,...].reshape(imge_shape[0], self.n_obs_steps*imge_shape[-3], *imge_shape[-2:])
             print(nobs['image'].shape)
             pre_action_map, g = self.obs_encoder(obs=nobs)
             pre_action_map_shape = pre_action_map.shape
             print('action map shape',pre_action_map_shape)
-
+            pre_action_map2 = pre_action_map
+        
         # inference action
         pre_action_map = pre_action_map.reshape(-1,pre_action_map_shape[-1]*pre_action_map_shape[-2])
-        best_action_index = torch.max(pre_action_map,dim=1,keepdim=False)[1]
+        
+        best_action_index = torch.max(pre_action_map,dim=1,keepdim=False)
+        print(torch.max(pre_action_map[0]))
+        print('max value',best_action_index[0][0])
+        best_action_index = best_action_index[1]
         action_pre_x = best_action_index // pre_action_map_shape[-1]
         action_pre_y = best_action_index % pre_action_map_shape[-1]
         action_pred = torch.stack((action_pre_x,action_pre_y),dim=1)
         action_dim = action_pred.shape[-1]
         action_pred = action_pred.reshape(pre_action_map_shape[0], pre_action_map_shape[1], action_dim)
-        action_pred = pixel2pos(action_pred)
         print('action pred',action_pred.shape)
+        visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=False)
+        visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=True)
+
+        action_pred = pixel2pos(action_pred)
+        
 
         # get action
         start = To - 1

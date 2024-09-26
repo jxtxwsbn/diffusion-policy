@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-def visualize_pusht_images_sequnece(images, pos=None, action=None, title=None, rows=4, cols=4):
+def visualize_pusht_images_sequnece(images, pos=None, action=None, title=None, rows=4, cols=4, softmax=False):
     """
     Visualize a batch of 16 images with dimensions 16 x 3 x 96 x 96.
 
@@ -23,7 +23,14 @@ def visualize_pusht_images_sequnece(images, pos=None, action=None, title=None, r
     # action = None
     for i, ax in enumerate(axes.flat):
         # Transpose the image from (3, 96, 96) to (96, 96, 3) for plotting
-        img = np.transpose(images[i], (1, 2, 0))
+        image = images[i]
+        flatten = image.view(image.shape[0],-1)
+        softmax_flatten = torch.softmax(flatten,dim=1)
+        softmax_result = softmax_flatten.view_as(image)
+        if softmax:
+            image = softmax_result
+            print('softmax')
+        img = np.transpose(image, (1, 2, 0))
         if pos is not None:
             x1, y1 = pos[i]
             circle = plt.Circle((x1, y1), radius=5, color='red', fill=False, linewidth=2)
