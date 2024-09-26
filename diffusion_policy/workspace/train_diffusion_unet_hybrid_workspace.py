@@ -164,17 +164,17 @@ class TrainDiffusionUnetHybridWorkspace(BaseWorkspace):
                         batch = dict_apply(batch, lambda x: x.to(device, non_blocking=True))
                         if train_sampling_batch is None:
                             train_sampling_batch = batch
-                        print('====batch')
+                        # print('====batch')
                         
-                        for k,v in batch.items():
-                            if isinstance(v, dict):
-                                print(k)
-                                for kk,vv in v.items():
-                                    print(kk, vv.shape)
-                            else:
-                                print(k, v.shape)
+                        # for k,v in batch.items():
+                        #     if isinstance(v, dict):
+                        #         print(k)
+                        #         for kk,vv in v.items():
+                        #             print(kk, vv.shape)
+                        #     else:
+                        #         print(k, v.shape)
 
-                            print('=========================')
+                        #     print('=========================')
                         
 
                         # compute loss
