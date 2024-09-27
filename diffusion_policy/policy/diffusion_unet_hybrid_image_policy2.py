@@ -19,6 +19,10 @@ import diffusion_policy.model.vision.crop_randomizer as dmvc
 from diffusion_policy.common.pytorch_util import dict_apply, replace_submodules
 from unet import ResUNet
 from utils import visualize_pusht_images_sequnece, pos2pixel, pixel2map, pixel2pos
+import torchvision.transforms.functional as torchvisionf
+import numpy as np
+import einops
+
 class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
     def __init__(self, 
             shape_meta: dict,
@@ -36,6 +40,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             cond_predict_scale=True,
             obs_encoder_group_norm=False,
             eval_fixed_crop=False,
+            trans_aug = False,
+            rot_aug = False,
             # parameters passed to step
             **kwargs):
         super().__init__()
@@ -101,6 +107,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         self.n_action_steps = n_action_steps
         self.n_obs_steps = n_obs_steps
         self.obs_as_global_cond = obs_as_global_cond
+        self.trans_aug = trans_aug
+        self.rot_aug = rot_aug
         self.kwargs = kwargs
 
         if num_inference_steps is None:
@@ -162,7 +170,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         nobs = copy.deepcopy(obs_dict)
         value = next(iter(nobs.values()))
         B, To = value.shape[:2]
-        print('value', value.shape)
+        # print('value', value.shape)
         T = self.horizon
         Da = self.action_dim
         # Do = self.obs_feature_dim
@@ -178,32 +186,33 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         if self.obs_as_global_cond:
             
             imge_shape = nobs['image'].shape
-            print('image shape',imge_shape)
-            visualize_pusht_images_sequnece(nobs['image'][:,0,:,:].cpu())
-            visualize_pusht_images_sequnece(nobs['image'][:,1,:,:].cpu())
+            # print('image shape',imge_shape)
+            # visualize_pusht_images_sequnece(nobs['image'][:,0,:,:].cpu())
+            # visualize_pusht_images_sequnece(nobs['image'][:,1,:,:].cpu())
 
             nobs['image'] = nobs['image'][:,:self.n_obs_steps,...].reshape(imge_shape[0], self.n_obs_steps*imge_shape[-3], *imge_shape[-2:])
-            print(nobs['image'].shape)
+            # print(nobs['image'].shape)
+
             pre_action_map, g = self.obs_encoder(obs=nobs)
             pre_action_map_shape = pre_action_map.shape
-            print('action map shape',pre_action_map_shape)
-            pre_action_map2 = pre_action_map
+            # print('action map shape',pre_action_map_shape)
+            # pre_action_map2 = pre_action_map
         
         # inference action
         pre_action_map = pre_action_map.reshape(-1,pre_action_map_shape[-1]*pre_action_map_shape[-2])
         
         best_action_index = torch.max(pre_action_map,dim=1,keepdim=False)
-        print(torch.max(pre_action_map[0]))
-        print('max value',best_action_index[0][0])
+        # print(torch.max(pre_action_map[0]))
+        # print('max value',best_action_index[0][0])
         best_action_index = best_action_index[1]
         action_pre_x = best_action_index // pre_action_map_shape[-1]
         action_pre_y = best_action_index % pre_action_map_shape[-1]
         action_pred = torch.stack((action_pre_x,action_pre_y),dim=1)
         action_dim = action_pred.shape[-1]
         action_pred = action_pred.reshape(pre_action_map_shape[0], pre_action_map_shape[1], action_dim)
-        print('action pred',action_pred.shape)
-        visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=False)
-        visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=True)
+        # print('action pred',action_pred.shape)
+        # visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=False)
+        # visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=True)
 
         action_pred = pixel2pos(action_pred)
         
@@ -244,6 +253,9 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             # action_map = pixel2map(action_pix)
             # print(action_pix)
             # print(action_map)
+            # print('trans aug',self.trans_aug)
+            # print('rot aug', self.rot_aug)
+
             # visualize_pusht_images_sequnece(batch['obs']['image'][0].clone().cpu(), pos=pos_pix.cpu(), action=action_pix.cpu(), title='before normalization')
             
         
@@ -264,9 +276,74 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             # print(this_nobs['agent_pos'].shape,'#######################')
              
             imge_shape = nobs['image'].shape
+            agent_pos_shape = nobs['agent_pos'].shape
             nobs['image'] = nobs['image'][:,:self.n_obs_steps,...].reshape(batch_size, self.n_obs_steps*imge_shape[-3], *imge_shape[-2:])
+            nobs['agent_pos'] = nobs['agent_pos'][:,:self.n_obs_steps,...].reshape(batch_size, self.n_obs_steps, agent_pos_shape[-1])
+            label_pix = pos2pixel(nactions)
+            agent_pos_pix = pos2pixel(nobs['agent_pos'])
+            
+            # print(nobs['agent_pos'])
             # print(nobs['image'].shape,'########################')
             # print(nobs['agent_pos'].shape,'#######################')
+            # print(nactions.shape,'#######################')
+
+            ## data augmentation
+            aug_step = 0
+            while True:
+                ## translation
+                tran_x = np.random.randint(low=0,high=20)-10
+                tran_y = np.random.randint(low=0, high=20)-10
+                agent_pos_pix_new = agent_pos_pix.clone()
+                label_pix_new = label_pix.clone()
+                agent_pos_pix_new[:,:,0] = agent_pos_pix_new[:,:,0] + tran_x
+                agent_pos_pix_new[:,:,1] = agent_pos_pix_new[:,:,1] + tran_y
+                label_pix_new[:,:,0] = label_pix_new[:,:,0] + tran_x
+                label_pix_new[:,:,1] = label_pix_new[:,:,1] + tran_y
+
+                pos_action_pix = torch.concat((agent_pos_pix_new,label_pix_new),dim=1)
+                # print(pos_action_pix.shape)
+                min_row_index = torch.min(pos_action_pix[:,:,0])
+                max_row_index = torch.max(pos_action_pix[:,:,0])
+                min_col_index = torch.min(pos_action_pix[:,:,1])
+                max_col_index = torch.max(pos_action_pix[:,:,1])
+                valid = (min_row_index>=0) & (min_col_index>=0) & (max_row_index<imge_shape[-1]) & (max_col_index<imge_shape[-2])
+                if valid:
+                    break
+                aug_step +=1
+                if aug_step==5:
+                    break
+            if valid:
+                label_pix = label_pix_new
+                agent_pos_pix = agent_pos_pix_new
+                nobs['image'] = torchvisionf.affine(nobs['image'], angle=0, translate=[tran_x,tran_y], scale=1, shear=0)
+
+
+            # print('tranlation aug', valid)
+            # vis_image = nobs['image'][:16,0:3,...]
+            # vis_pix = agent_pos_pix[:16,0,:]
+            # visualize_pusht_images_sequnece(vis_image.cpu(), pos=vis_pix.cpu(), title='transformation')
+
+
+
+            # theta = (45./180)*np.pi            
+            # theta = 45./np.pi
+            # tran_x = 0.
+            # tran_y = 0.
+            # rotm = np.array([[np.cos(theta),-np.sin(theta), tran_x/vis_image.shape[-1]],
+            #                 [np.sin(theta), np.cos(theta), tran_y/vis_image.shape[-2]]])
+            
+            # rotm = torch.from_numpy(rotm).float().to(vis_image.device).unsqueeze(dim=0).repeat(vis_image.shape[0],1,1)
+            # print(rotm.shape, vis_image.shape)
+            # affine_grid = F.affine_grid(theta=rotm,size=vis_image.shape, align_corners=False)
+            # print(affine_grid.shape)
+            # new_vis = F.grid_sample(input=vis_image, grid=affine_grid,mode='nearest', align_corners=False)
+            # new_vis_pix = vis_pix.clone()
+            # new_vis_pix[:,0] = vis_pix[:,0] - tran_x
+            # new_vis_pix[:,1] = vis_pix[:,1] - tran_y
+
+            # visualize_pusht_images_sequnece(new_vis.cpu(), pos=vis_pix.cpu(), title='transformation')
+            
+            
             pre_action_map, g = self.obs_encoder(obs=nobs)
             if vis:
                 visualize_pusht_images_sequnece(pre_action_map.unsqueeze(dim=2)[0].detach().clone().cpu(), pos=pos_pix.cpu(), action=action_pix.cpu(), title='before normalization')
@@ -276,7 +353,6 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             pre_action_map_shape = pre_action_map.shape
             pre_action_map = pre_action_map.reshape(-1,pre_action_map_shape[-1]*pre_action_map_shape[-2])
             
-
             # inference action
             # best_action_index = torch.max(pre_action_map,dim=1,keepdim=False)[1]
             # print(best_action_index.shape)
@@ -290,7 +366,6 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             # print(action_pred[0,:,:])
             # action_pred = pixel2pos(action_pred)
 
-            label_pix = pos2pixel(nactions)
             label = pixel2map(label_pix.reshape(-1, label_pix.shape[-1]))
             loss = F.cross_entropy(input=pre_action_map,target=label)
             

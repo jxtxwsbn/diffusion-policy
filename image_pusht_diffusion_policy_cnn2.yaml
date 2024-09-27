@@ -40,7 +40,7 @@ multi_run:
   wandb_name_base: 2023.01.16-20.20.06_train_diffusion_unet_hybrid_pusht_image
 n_action_steps: 8
 n_latency_steps: 0
-n_obs_steps: 4
+n_obs_steps: 2
 name: train_diffusion_unet_hybrid
 obs_as_global_cond: true
 optimizer:
@@ -64,11 +64,13 @@ policy:
   - 1024
   - 2048
   eval_fixed_crop: true
+  trans_aug: true
+  rot_aug: true
   horizon: 16
   kernel_size: 5
   n_action_steps: 8
   n_groups: 8
-  n_obs_steps: 4
+  n_obs_steps: 2
   noise_scheduler:
     _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
     beta_end: 0.02
@@ -128,7 +130,7 @@ task:
     max_steps: 300
     n_action_steps: 8
     n_envs: null
-    n_obs_steps: 4
+    n_obs_steps: 2
     n_test: 50
     n_test_vis: 4
     n_train: 6

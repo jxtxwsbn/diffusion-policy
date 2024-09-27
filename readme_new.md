@@ -4,6 +4,7 @@ wget "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforg
 
 bash Miniforge3-$(uname)-$(uname -m).sh
 
+`pip install --upgrade pyqt5_tools`
 
 
 sudo apt install -y libosmesa6-dev libgl1-mesa-glx libglfw3 patchelf
