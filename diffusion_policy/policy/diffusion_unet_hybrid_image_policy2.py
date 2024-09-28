@@ -40,6 +40,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             cond_predict_scale=True,
             obs_encoder_group_norm=False,
             eval_fixed_crop=False,
+            use_pos_map=False,
+            # use_pos_val=False,
             trans_aug = False,
             rot_aug = False,
             # parameters passed to step
@@ -98,7 +100,6 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         print('n_obs_steps', n_obs_steps)
         print('horizons', horizon)
 
-        self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*3, n_output_channel=horizon)
 
         self.noise_scheduler = noise_scheduler
         self.normalizer = LinearNormalizer()
@@ -109,7 +110,17 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         self.obs_as_global_cond = obs_as_global_cond
         self.trans_aug = trans_aug
         self.rot_aug = rot_aug
+        self.use_pos_map = use_pos_map
         self.kwargs = kwargs
+
+
+        if self.use_pos_map:
+            channel = 3+1
+        else:
+            channel = 3
+        self.channel = channel
+        self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon)
+
 
         if num_inference_steps is None:
             num_inference_steps = noise_scheduler.config.num_train_timesteps
@@ -186,13 +197,30 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         if self.obs_as_global_cond:
             
             imge_shape = nobs['image'].shape
+            batch_size = imge_shape[0]
             # print('image shape',imge_shape)
             # visualize_pusht_images_sequnece(nobs['image'][:,0,:,:].cpu())
             # visualize_pusht_images_sequnece(nobs['image'][:,1,:,:].cpu())
 
             nobs['image'] = nobs['image'][:,:self.n_obs_steps,...].reshape(imge_shape[0], self.n_obs_steps*imge_shape[-3], *imge_shape[-2:])
-            # print(nobs['image'].shape)
-
+            nobs['agent_pos'] = nobs['agent_pos'][:,:self.n_obs_steps,...].reshape(batch_size, self.n_obs_steps, self.action_dim)
+            agent_pos_pix = pos2pixel(nobs['agent_pos'])
+            # print(agent_pos_pix.shape)
+        
+            if self.use_pos_map:
+                agent_pos_map = pixel2map(agent_pos_pix.reshape(batch_size*self.n_obs_steps, self.action_dim))
+                agent_pos_map = agent_pos_map.reshape(batch_size,self.n_obs_steps,imge_shape[-2], imge_shape[-1])
+                # print(agent_pos_map.shape)
+                # for i in range(10):
+                #     print(agent_pos_map[i,0].sum())
+                #     print(agent_pos_map[i,0,agent_pos_pix[i,0,0],agent_pos_pix[i,0,1]])
+                agent_pos_map = agent_pos_map.unsqueeze(dim=-3)
+                # print(agent_pos_map.shape)
+                nobs['image'] = nobs['image'].reshape(batch_size, self.n_obs_steps, imge_shape[-3], *imge_shape[-2:])
+                nobs['image'] = torch.cat((nobs['image'],agent_pos_map),dim=-3)
+                nobs['image'] = nobs['image'].reshape(batch_size, self.n_obs_steps*self.channel, *imge_shape[-2:])
+                # print(nobs['image'].shape)
+                #         
             pre_action_map, g = self.obs_encoder(obs=nobs)
             pre_action_map_shape = pre_action_map.shape
             # print('action map shape',pre_action_map_shape)
@@ -317,7 +345,19 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                 agent_pos_pix = agent_pos_pix_new
                 nobs['image'] = torchvisionf.affine(nobs['image'], angle=0, translate=[tran_x,tran_y], scale=1, shear=0)
 
-
+            if self.use_pos_map:
+                agent_pos_map = pixel2map(agent_pos_pix.reshape(batch_size*self.n_obs_steps, self.action_dim))
+                agent_pos_map = agent_pos_map.reshape(batch_size,self.n_obs_steps,imge_shape[-2], imge_shape[-1])
+                # print(agent_pos_map.shape)
+                # for i in range(10):
+                #     print(agent_pos_map[i,0].sum())
+                #     print(agent_pos_map[i,0,agent_pos_pix[i,0,0],agent_pos_pix[i,0,1]])
+                agent_pos_map = agent_pos_map.unsqueeze(dim=-3)
+                # print(agent_pos_map.shape)
+                nobs['image'] = nobs['image'].reshape(batch_size, self.n_obs_steps, imge_shape[-3], *imge_shape[-2:])
+                nobs['image'] = torch.cat((nobs['image'],agent_pos_map),dim=-3)
+                nobs['image'] = nobs['image'].reshape(batch_size, self.n_obs_steps*self.channel, *imge_shape[-2:])
+                # print(nobs['image'].shape)
             # print('tranlation aug', valid)
             # vis_image = nobs['image'][:16,0:3,...]
             # vis_pix = agent_pos_pix[:16,0,:]

@@ -66,6 +66,8 @@ policy:
   eval_fixed_crop: true
   trans_aug: true
   rot_aug: true
+  use_pos_map: true
+  # use_pos_value: false
   horizon: 16
   kernel_size: 5
   n_action_steps: 8
