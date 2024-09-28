@@ -199,8 +199,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             imge_shape = nobs['image'].shape
             batch_size = imge_shape[0]
             # print('image shape',imge_shape)
-            # visualize_pusht_images_sequnece(nobs['image'][:,0,:,:].cpu())
-            # visualize_pusht_images_sequnece(nobs['image'][:,1,:,:].cpu())
+            # visualize_pusht_images_sequnece(nobs['image'][:16,0,:,:].cpu())
+            # visualize_pusht_images_sequnece(nobs['image'][:16,1,:,:].cpu())
 
             nobs['image'] = nobs['image'][:,:self.n_obs_steps,...].reshape(imge_shape[0], self.n_obs_steps*imge_shape[-3], *imge_shape[-2:])
             nobs['agent_pos'] = nobs['agent_pos'][:,:self.n_obs_steps,...].reshape(batch_size, self.n_obs_steps, self.action_dim)

@@ -66,7 +66,7 @@ policy:
   eval_fixed_crop: true
   trans_aug: true
   rot_aug: true
-  use_pos_map: true
+  use_pos_map: false
   # use_pos_value: false
   horizon: 16
   kernel_size: 5
@@ -127,6 +127,7 @@ task:
     zarr_path: data/pusht/pusht_cchi_v7_replay.zarr
   env_runner:
     _target_: diffusion_policy.env_runner.pusht_image_runner.PushTImageRunner
+    random_trans_eval: true
     fps: 10
     legacy_test: true
     max_steps: 300

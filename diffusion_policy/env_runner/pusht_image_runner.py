@@ -35,7 +35,8 @@ class PushTImageRunner(BaseImageRunner):
             render_size=96,
             past_action=False,
             tqdm_interval_sec=5.0,
-            n_envs=None
+            n_envs=None,
+            random_trans_eval=False,
         ):
         super().__init__(output_dir)
         if n_envs is None:
@@ -115,7 +116,9 @@ class PushTImageRunner(BaseImageRunner):
 
                 # set seed
                 assert isinstance(env, MultiStepWrapper)
-                env.seed(seed)
+                # env.seed(seed)
+                print('random_trans_eval',random_trans_eval)
+                env.seed((seed, random_trans_eval))
             
             env_seeds.append(seed)
             env_prefixs.append('test/')
@@ -247,5 +250,5 @@ class PushTImageRunner(BaseImageRunner):
             name = prefix+'mean_score'
             value = np.mean(value)
             log_data[name] = value
-        # print(log_data,'+++++')
+
         return log_data
