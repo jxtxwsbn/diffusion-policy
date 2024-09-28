@@ -13,7 +13,7 @@ dataloader:
   persistent_workers: false
   pin_memory: true
   shuffle: true
-dataset_obs_steps: 2
+dataset_obs_steps: 4
 ema:
   _target_: diffusion_policy.model.diffusion.ema_model.EMAModel
   inv_gamma: 1.0
@@ -40,7 +40,7 @@ multi_run:
   wandb_name_base: 2023.01.16-20.20.06_train_diffusion_unet_hybrid_pusht_image
 n_action_steps: 8
 n_latency_steps: 0
-n_obs_steps: 2
+n_obs_steps: 4
 name: train_diffusion_unet_hybrid
 obs_as_global_cond: true
 optimizer:
@@ -70,7 +70,7 @@ policy:
   kernel_size: 5
   n_action_steps: 8
   n_groups: 8
-  n_obs_steps: 2
+  n_obs_steps: 4
   noise_scheduler:
     _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
     beta_end: 0.02
@@ -130,7 +130,7 @@ task:
     max_steps: 300
     n_action_steps: 8
     n_envs: null
-    n_obs_steps: 2
+    n_obs_steps: 4
     n_test: 50
     n_test_vis: 4
     n_train: 6
