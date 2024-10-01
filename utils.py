@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-def visualize_pusht_images_sequnece(images, pos=None, action=None, title=None, rows=4, cols=4, softmax=False):
+def visualize_pusht_images_sequnece(images, pos=None, action=None, title=None, rows=4, cols=4, softmax=False,word='step'):
     """
     Visualize a batch of 16 images with dimensions 16 x 3 x 96 x 96.
 
@@ -42,7 +42,7 @@ def visualize_pusht_images_sequnece(images, pos=None, action=None, title=None, r
         img = np.clip(img, 0, 1)
         ax.imshow(img)
         ax.axis('off')
-        ax.set_title('step k+{}'.format(i))
+        ax.set_title('{} k+{}'.format(word,i))
 
     if title is not None:
         fig.suptitle(title)

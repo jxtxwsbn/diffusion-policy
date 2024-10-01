@@ -18,7 +18,7 @@ import robomimic.models.base_nets as rmbn
 import diffusion_policy.model.vision.crop_randomizer as dmvc
 from diffusion_policy.common.pytorch_util import dict_apply, replace_submodules
 from unet import ResUNet
-from unet import Unet2D
+# from unet import Unet2D
 from utils import visualize_pusht_images_sequnece, pos2pixel, pixel2map, pixel2pos
 import torchvision.transforms.functional as torchvisionf
 import numpy as np
@@ -120,8 +120,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         else:
             channel = 3
         self.channel = channel
-        # self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon)
-        self.obs_encoder = Unet2D(n_input_channel=n_obs_steps*channel, n_output_channel=horizon)
+        self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon, n_hidden=32)
+        # self.obs_encoder = Unet2D(n_input_channel=n_obs_steps*channel, n_output_channel=horizon)
 
 
         if num_inference_steps is None:
@@ -201,8 +201,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             imge_shape = nobs['image'].shape
             batch_size = imge_shape[0]
             # print('image shape',imge_shape)
-            # visualize_pusht_images_sequnece(nobs['image'][:16,0,:,:].cpu())
-            # visualize_pusht_images_sequnece(nobs['image'][:16,1,:,:].cpu())
+            visualize_pusht_images_sequnece(nobs['image'][:16,0,:,:].cpu(),word='test')
+            visualize_pusht_images_sequnece(nobs['image'][:16,1,:,:].cpu(),word='test')
 
             nobs['image'] = nobs['image'][:,:self.n_obs_steps,...].reshape(imge_shape[0], self.n_obs_steps*imge_shape[-3], *imge_shape[-2:])
             nobs['agent_pos'] = nobs['agent_pos'][:,:self.n_obs_steps,...].reshape(batch_size, self.n_obs_steps, self.action_dim)
@@ -235,7 +235,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         # print(torch.max(pre_action_map[0]))
         # print('max value',best_action_index[0][0])
         best_action_index = best_action_index[1]
-        action_pre_x = best_action_index // pre_action_map_shape[-1]
+        # action_pre_x = best_action_index // pre_action_map_shape[-1]
+        action_pre_x = torch.div(best_action_index,pre_action_map_shape[-1],rounding_mode='floor')
         action_pre_y = best_action_index % pre_action_map_shape[-1]
         action_pred = torch.stack((action_pre_x,action_pre_y),dim=1)
         action_dim = action_pred.shape[-1]
@@ -321,8 +322,11 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             aug_step = 0
             while True:
                 ## translation
-                tran_x = np.random.randint(low=0,high=20)-10
-                tran_y = np.random.randint(low=0, high=20)-10
+                trans_amount_x = 20
+                trans_amount_y = 20
+
+                tran_x = np.random.randint(low=0, high=trans_amount_x)-(trans_amount_x/2)
+                tran_y = np.random.randint(low=0, high=trans_amount_y)-(trans_amount_y/2)
                 agent_pos_pix_new = agent_pos_pix.clone()
                 label_pix_new = label_pix.clone()
                 agent_pos_pix_new[:,:,0] = agent_pos_pix_new[:,:,0] + tran_x
