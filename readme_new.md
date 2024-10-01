@@ -13,7 +13,7 @@ cd to the dir
 
 mamba env create -f conda_environment.yaml
 
-
+pip install einops-exts
 
 batch 
 {

@@ -7,21 +7,6 @@
 [[Colab (vision)]](https://colab.research.google.com/drive/18GIHeOQ5DyjMN8iIRZL2EKZ0745NLIpg?usp=sharing)
 
 
-[Cheng Chi](http://cheng-chi.github.io/)<sup>1</sup>,
-[Siyuan Feng](https://www.cs.cmu.edu/~sfeng/)<sup>2</sup>,
-[Yilun Du](https://yilundu.github.io/)<sup>3</sup>,
-[Zhenjia Xu](https://www.zhenjiaxu.com/)<sup>1</sup>,
-[Eric Cousineau](https://www.eacousineau.com/)<sup>2</sup>,
-[Benjamin Burchfiel](http://www.benburchfiel.com/)<sup>2</sup>,
-[Shuran Song](https://www.cs.columbia.edu/~shurans/)<sup>1</sup>
-
-<sup>1</sup>Columbia University,
-<sup>2</sup>Toyota Research Institute,
-<sup>3</sup>MIT
-
-<img src="media/teaser.png" alt="drawing" width="100%"/>
-<img src="media/multimodal_sim.png" alt="drawing" width="100%"/>
-
 ## 🛝 Try it out!
 Our self-contained Google Colab notebooks is the easiest way to play with Diffusion Policy. We provide separate notebooks for  [state-based environment](https://colab.research.google.com/drive/1gxdkgRVfM55zihY9TFLja97cSVZOZq2B?usp=sharing) and [vision-based environment](https://colab.research.google.com/drive/18GIHeOQ5DyjMN8iIRZL2EKZ0745NLIpg?usp=sharing).
 
@@ -134,6 +119,12 @@ Activate conda environment and login to [wandb](https://wandb.ai) (if you haven'
 Launch training with seed 42 on GPU 0.
 ```console
 (robodiff)[diffusion_policy]$ python train.py --config-dir=. --config-name=image_pusht_diffusion_policy_cnn.yaml training.seed=42 training.device=cuda:0 hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}'
+```
+
+Run the action map generation
+```
+pip install einops-exts
+python train.py --config-dir=. --config-name=image_pusht_diffusion_policy_cnn2.yaml training.seed=42 training.device=cuda:0 hydra.run.dir='data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}'
 ```
 
 This will create a directory in format `data/outputs/yyyy.mm.dd/hh.mm.ss_<method_name>_<task_name>` where configs, logs and checkpoints are written to. The policy will be evaluated every 50 epochs with the success rate logged as `test/mean_score` on wandb, as well as videos for some rollouts.
