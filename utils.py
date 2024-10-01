@@ -57,14 +57,15 @@ def visualize_pusht_images_sequnece(images, pos=None, action=None, title=None, r
 
 
 def pos2pixel(pos):
-    pix = (pos/512)*96
+    pix = (pos/512)*95
+    pix = torch.round(pix)
     pix = pix.to(torch.long)
     # print('innnnnnnt')
     return pix
 
 def pixel2pos(pix):
     pos = pix.to(torch.float)
-    pos = (pix/96)*512
+    pos = (pix/95)*512
     return pos
 
 def pixel2map(pix,h=96, w=96):
@@ -78,3 +79,22 @@ def pixel2map(pix,h=96, w=96):
     one_hot_map[row_index, category.reshape(-1)] = 1.
     # print(torch.argmax(one_hot_map[1,:]))
     return one_hot_map
+
+def pix2xy(pix, h=95, w=95):
+    pixr = pix[..., 0:1]
+    pixc = pix[..., 1:]
+    x = pixc - w/2
+    y = h/2 - pixr
+    xy = torch.cat((x,y),dim=-1)
+    return xy
+
+def xy2pix(xy, h=95, w=95):
+    x = xy[..., 0:1]
+    y = xy[..., 1:]
+    
+    pixr = h/2 - y
+    pixc = x + w/2
+    pix = torch.cat((pixr,pixc),dim=-1)
+    pix = torch.round(pix)
+    pix = pix.to(torch.long)
+    return pix

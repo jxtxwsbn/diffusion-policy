@@ -19,7 +19,7 @@ import diffusion_policy.model.vision.crop_randomizer as dmvc
 from diffusion_policy.common.pytorch_util import dict_apply, replace_submodules
 from unet import ResUNet
 # from unet import Unet2D
-from utils import visualize_pusht_images_sequnece, pos2pixel, pixel2map, pixel2pos
+from utils import visualize_pusht_images_sequnece, pos2pixel, pixel2map, pixel2pos, pix2xy, xy2pix
 import torchvision.transforms.functional as torchvisionf
 import numpy as np
 import einops
@@ -208,7 +208,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             nobs['agent_pos'] = nobs['agent_pos'][:,:self.n_obs_steps,...].reshape(batch_size, self.n_obs_steps, self.action_dim)
             agent_pos_pix = pos2pixel(nobs['agent_pos'])
             # print(agent_pos_pix.shape)
-        
+            
             if self.use_pos_map:
                 agent_pos_map = pixel2map(agent_pos_pix.reshape(batch_size*self.n_obs_steps, self.action_dim))
                 agent_pos_map = agent_pos_map.reshape(batch_size,self.n_obs_steps,imge_shape[-2], imge_shape[-1])
@@ -312,44 +312,83 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             nobs['agent_pos'] = nobs['agent_pos'][:,:self.n_obs_steps,...].reshape(batch_size, self.n_obs_steps, agent_pos_shape[-1])
             label_pix = pos2pixel(nactions)
             agent_pos_pix = pos2pixel(nobs['agent_pos'])
+
+            aug_step_max = 0
+            if self.trans_aug:
+                aug_step_max += 10
+                
+            if self.rot_aug:
+                aug_step_max += 10
             
-            # print(nobs['agent_pos'])
-            # print(nobs['image'].shape,'########################')
-            # print(nobs['agent_pos'].shape,'#######################')
-            # print(nactions.shape,'#######################')
+            
+            if aug_step_max >0:
+                aug_step = 0
+                while True:
+                    agent_pos_pix_new = agent_pos_pix.clone()
+                    label_pix_new = label_pix.clone()
+                    tran_x = 0
+                    tran_y = 0
+                    theta_degree = 0
 
-            ## data augmentation
-            aug_step = 0
-            while True:
-                ## translation
-                trans_amount_x = 20
-                trans_amount_y = 20
+                    if self.rot_aug:
+                        # sample transformation matrix
+                        theta_sigma = 2 * np.pi / 6
+                        theta = np.random.normal(0, theta_sigma)
+                        rotm = np.array([[np.cos(theta),-np.sin(theta)],
+                                         [np.sin(theta), np.cos(theta)]])
+                        rotm = torch.from_numpy(rotm).float().to(label_pix.device)
+                        theta_degree = (theta * 180)/np.pi
+                        # rotate agent pos
+                        pos_xy = pix2xy(agent_pos_pix_new)
+                        pos_xy = torch.einsum('bij, jk -> bik', pos_xy, rotm.T)
+                        agent_pos_pix_new = xy2pix(pos_xy)
 
-                tran_x = np.random.randint(low=0, high=trans_amount_x)-(trans_amount_x/2)
-                tran_y = np.random.randint(low=0, high=trans_amount_y)-(trans_amount_y/2)
-                agent_pos_pix_new = agent_pos_pix.clone()
-                label_pix_new = label_pix.clone()
-                agent_pos_pix_new[:,:,0] = agent_pos_pix_new[:,:,0] + tran_x
-                agent_pos_pix_new[:,:,1] = agent_pos_pix_new[:,:,1] + tran_y
-                label_pix_new[:,:,0] = label_pix_new[:,:,0] + tran_x
-                label_pix_new[:,:,1] = label_pix_new[:,:,1] + tran_y
+                        # rotat action label
+                        action_xy = pix2xy(label_pix_new)
+                        action_xy = torch.einsum('bij, jk -> bik', action_xy, rotm.T)
+                        label_pix_new = xy2pix(action_xy)
 
-                pos_action_pix = torch.concat((agent_pos_pix_new,label_pix_new),dim=1)
-                # print(pos_action_pix.shape)
-                min_row_index = torch.min(pos_action_pix[:,:,0])
-                max_row_index = torch.max(pos_action_pix[:,:,0])
-                min_col_index = torch.min(pos_action_pix[:,:,1])
-                max_col_index = torch.max(pos_action_pix[:,:,1])
-                valid = (min_row_index>=0) & (min_col_index>=0) & (max_row_index<imge_shape[-1]) & (max_col_index<imge_shape[-2])
+
+                    if self.trans_aug:
+                        
+                        # translation
+                        rand = np.random.random()
+                        
+                        if rand<0.7:
+                            trans_amount_x = 20
+                            trans_amount_y = 20
+                            tran_x = np.random.randint(low=0, high=trans_amount_x)-(trans_amount_x/2)
+                            tran_y = np.random.randint(low=0, high=trans_amount_y)-(trans_amount_y/2)
+                        
+                        else:
+                            trans_sigma = imge_shape[-1]/6
+                            trans = np.random.normal(0, trans_sigma, size=2)
+                            tran_x = np.round(trans[0])
+                            tran_y = np.round(trans[1])
+
+                    
+                    agent_pos_pix_new[:,:,0] = agent_pos_pix_new[:,:,0] + tran_x
+                    agent_pos_pix_new[:,:,1] = agent_pos_pix_new[:,:,1] + tran_y
+                    label_pix_new[:,:,0] = label_pix_new[:,:,0] + tran_x
+                    label_pix_new[:,:,1] = label_pix_new[:,:,1] + tran_y
+
+                    pos_action_pix = torch.concat((agent_pos_pix_new,label_pix_new),dim=1)
+                    # print(pos_action_pix.shape)
+                    min_row_index = torch.min(pos_action_pix[:,:,0])
+                    max_row_index = torch.max(pos_action_pix[:,:,0])
+                    min_col_index = torch.min(pos_action_pix[:,:,1])
+                    max_col_index = torch.max(pos_action_pix[:,:,1])
+                    valid = (min_row_index>=0) & (min_col_index>=0) & (max_row_index<imge_shape[-1]) & (max_col_index<imge_shape[-2])
+                    if valid:
+                        break
+                    aug_step +=1
+
+                    if aug_step==aug_step_max:
+                        break
                 if valid:
-                    break
-                aug_step +=1
-                if aug_step==5:
-                    break
-            if valid:
-                label_pix = label_pix_new
-                agent_pos_pix = agent_pos_pix_new
-                nobs['image'] = torchvisionf.affine(nobs['image'], angle=0, translate=[tran_x,tran_y], scale=1, shear=0)
+                    label_pix = label_pix_new
+                    agent_pos_pix = agent_pos_pix_new
+                    nobs['image'] = torchvisionf.affine(nobs['image'], angle=theta_degree, translate=[tran_x,tran_y], scale=1, shear=0)
 
             if self.use_pos_map:
                 agent_pos_map = pixel2map(agent_pos_pix.reshape(batch_size*self.n_obs_steps, self.action_dim))
@@ -364,30 +403,12 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                 nobs['image'] = torch.cat((nobs['image'],agent_pos_map),dim=-3)
                 nobs['image'] = nobs['image'].reshape(batch_size, self.n_obs_steps*self.channel, *imge_shape[-2:])
                 # print(nobs['image'].shape)
-            # print('tranlation aug', valid)
+            
+            
+            # print('aug', valid)
             # vis_image = nobs['image'][:16,0:3,...]
             # vis_pix = agent_pos_pix[:16,0,:]
-            # visualize_pusht_images_sequnece(vis_image.cpu(), pos=vis_pix.cpu(), title='transformation')
-
-
-
-            # theta = (45./180)*np.pi            
-            # theta = 45./np.pi
-            # tran_x = 0.
-            # tran_y = 0.
-            # rotm = np.array([[np.cos(theta),-np.sin(theta), tran_x/vis_image.shape[-1]],
-            #                 [np.sin(theta), np.cos(theta), tran_y/vis_image.shape[-2]]])
-            
-            # rotm = torch.from_numpy(rotm).float().to(vis_image.device).unsqueeze(dim=0).repeat(vis_image.shape[0],1,1)
-            # print(rotm.shape, vis_image.shape)
-            # affine_grid = F.affine_grid(theta=rotm,size=vis_image.shape, align_corners=False)
-            # print(affine_grid.shape)
-            # new_vis = F.grid_sample(input=vis_image, grid=affine_grid,mode='nearest', align_corners=False)
-            # new_vis_pix = vis_pix.clone()
-            # new_vis_pix[:,0] = vis_pix[:,0] - tran_x
-            # new_vis_pix[:,1] = vis_pix[:,1] - tran_y
-
-            # visualize_pusht_images_sequnece(new_vis.cpu(), pos=vis_pix.cpu(), title='transformation')
+            # visualize_pusht_images_sequnece(vis_image.cpu(), pos=vis_pix.cpu(), title='transformation', word='sample')
             
             
             pre_action_map, g = self.obs_encoder(obs=nobs)
