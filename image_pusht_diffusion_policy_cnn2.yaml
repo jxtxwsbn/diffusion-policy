@@ -8,12 +8,12 @@ checkpoint:
     mode: max
     monitor_key: test_mean_score
 dataloader:
-  batch_size: 64
+  batch_size: 20
   num_workers: 0
   persistent_workers: false
   pin_memory: true
   shuffle: true
-dataset_obs_steps: 4
+dataset_obs_steps: 2
 ema:
   _target_: diffusion_policy.model.diffusion.ema_model.EMAModel
   inv_gamma: 1.0
@@ -40,7 +40,7 @@ multi_run:
   wandb_name_base: 2023.01.16-20.20.06_train_diffusion_unet_hybrid_pusht_image
 n_action_steps: 8
 n_latency_steps: 0
-n_obs_steps: 4
+n_obs_steps: 2
 name: train_diffusion_unet_hybrid
 obs_as_global_cond: true
 optimizer:
@@ -65,14 +65,14 @@ policy:
   - 2048
   eval_fixed_crop: true
   trans_aug: true
-  rot_aug: true
+  rot_aug: false
   use_pos_map: false
   # use_pos_value: false
   horizon: 16
   kernel_size: 5
   n_action_steps: 8
   n_groups: 8
-  n_obs_steps: 4
+  n_obs_steps: 2
   noise_scheduler:
     _target_: diffusers.schedulers.scheduling_ddpm.DDPMScheduler
     beta_end: 0.02
@@ -127,13 +127,13 @@ task:
     zarr_path: data/pusht/pusht_cchi_v7_replay.zarr
   env_runner:
     _target_: diffusion_policy.env_runner.pusht_image_runner.PushTImageRunner
-    random_trans_eval: true
+    random_trans_eval: false
     fps: 10
     legacy_test: true
     max_steps: 300
     n_action_steps: 8
     n_envs: null
-    n_obs_steps: 4
+    n_obs_steps: 2
     n_test: 50
     n_test_vis: 4
     n_train: 6
@@ -180,7 +180,7 @@ training:
   use_ema: true
   val_every: 1
 val_dataloader:
-  batch_size: 64
+  batch_size: 20
   num_workers: 8
   persistent_workers: false
   pin_memory: true

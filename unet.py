@@ -209,3 +209,63 @@ class ResUNet(torch.nn.Module):
 # x = torch.rand(1,6, 96, 96)
 # y, g= unet(x=x)
 # print(y.shape, g.shape)
+
+
+
+
+from guided_diffusion.unet import UNetModel
+
+class Unet2D(nn.Module):
+    def __init__(self, 
+                 image_size: tuple=(96,96),
+                 n_input_channel=6,
+                 num_input_frame=1,
+                 n_output_channel=16
+                 ):
+        super(Unet2D, self).__init__()
+        self.num_channel = n_input_channel
+        self.num_input_frame = num_input_frame
+        # self.num_output_frame = num_output_frame
+
+        self.unet = UNetModel(
+            image_size=image_size,
+            in_channels=self.num_channel,
+            model_channels=128,
+            out_channels=n_output_channel,
+            num_res_blocks=2,
+            attention_resolutions=(8, 16),
+            dropout=0,
+            channel_mult=(1, 2, 3, 4, 5),
+            conv_resample=True,
+            dims=3,
+            num_classes=None,
+            task_tokens=False,
+            task_token_channels=512,
+            use_checkpoint=False,
+            use_fp16=False,
+            num_head_channels=32,
+        )
+
+    def forward(self, obs=None, x=None, task_embed=None, **kwargs):
+        
+        if obs is not None:
+            x, state = obs['image'], obs['agent_pos']
+        t = torch.zeros(x.shape[0]).to(x.device)
+        # fc = x.shape[1]
+        # x_cond = rearrange(x[:, fc-self.num_channel*self.num_input_frame:], 'b (f c) h w -> b c f h w', f=self.num_input_frame)
+        # x = rearrange(x[:, :fc-self.num_channel*self.num_input_frame], 'b (f c) h w -> b c f h w', f=self.num_output_frame)
+        # x = torch.cat([x, x_cond], dim=1)
+        # print(x.shape)
+        x = rearrange(x, 'b (f c) h w -> b c f h w', f=self.num_input_frame)
+        out = self.unet(x, t, task_embed, **kwargs)
+        return rearrange(out, 'b c f h w -> b (f c) h w'), None
+
+# unet = Unet2D().cuda()
+# x = torch.rand(24, 6, 96, 96).cuda()
+# y = unet(x)
+# print(y.shape)
+
+# y = unet.unet(x,timesteps=torch.zeros(x.shape[0]),y=None)
+# print(y.shape)
+
+

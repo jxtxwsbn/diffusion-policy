@@ -18,6 +18,7 @@ import robomimic.models.base_nets as rmbn
 import diffusion_policy.model.vision.crop_randomizer as dmvc
 from diffusion_policy.common.pytorch_util import dict_apply, replace_submodules
 from unet import ResUNet
+from unet import Unet2D
 from utils import visualize_pusht_images_sequnece, pos2pixel, pixel2map, pixel2pos
 import torchvision.transforms.functional as torchvisionf
 import numpy as np
@@ -119,7 +120,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         else:
             channel = 3
         self.channel = channel
-        self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon)
+        # self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon)
+        self.obs_encoder = Unet2D(n_input_channel=n_obs_steps*channel, n_output_channel=horizon)
 
 
         if num_inference_steps is None:
