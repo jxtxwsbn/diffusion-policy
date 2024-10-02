@@ -120,7 +120,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         else:
             channel = 3
         self.channel = channel
-        self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon, n_hidden=32)
+        self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon, n_hidden=32*2)
         # self.obs_encoder = Unet2D(n_input_channel=n_obs_steps*channel, n_output_channel=horizon)
 
 
@@ -201,8 +201,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             imge_shape = nobs['image'].shape
             batch_size = imge_shape[0]
             # print('image shape',imge_shape)
-            visualize_pusht_images_sequnece(nobs['image'][:16,0,:,:].cpu(),word='test')
-            visualize_pusht_images_sequnece(nobs['image'][:16,1,:,:].cpu(),word='test')
+            # visualize_pusht_images_sequnece(nobs['image'][:16,0,:,:].cpu(),word='test')
+            # visualize_pusht_images_sequnece(nobs['image'][:16,1,:,:].cpu(),word='test')
 
             nobs['image'] = nobs['image'][:,:self.n_obs_steps,...].reshape(imge_shape[0], self.n_obs_steps*imge_shape[-3], *imge_shape[-2:])
             nobs['agent_pos'] = nobs['agent_pos'][:,:self.n_obs_steps,...].reshape(batch_size, self.n_obs_steps, self.action_dim)
