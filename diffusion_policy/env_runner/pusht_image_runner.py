@@ -201,8 +201,10 @@ class PushTImageRunner(BaseImageRunner):
 
                 # run policy
                 with torch.no_grad():
+                    # import time
+                    # time0=time.time()
                     action_dict = policy.predict_action(obs_dict)
-
+                    # print(time.time() - time0)
                 # device_transfer
                 np_action_dict = dict_apply(action_dict,
                     lambda x: x.detach().to('cpu').numpy())
