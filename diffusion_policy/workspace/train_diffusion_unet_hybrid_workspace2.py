@@ -108,6 +108,7 @@ class TrainDiffusionUnetHybridWorkspace(BaseWorkspace):
 
         # configure env
         env_runner: BaseImageRunner
+        # print(cfg.task.env_runner)
         env_runner = hydra.utils.instantiate(
             cfg.task.env_runner,
             output_dir=self.output_dir)

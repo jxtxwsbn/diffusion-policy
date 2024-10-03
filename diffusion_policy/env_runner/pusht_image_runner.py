@@ -37,6 +37,7 @@ class PushTImageRunner(BaseImageRunner):
             tqdm_interval_sec=5.0,
             n_envs=None,
             random_trans_eval=False,
+            random_rot_eval=False,
         ):
         super().__init__(output_dir)
         if n_envs is None:
@@ -118,7 +119,8 @@ class PushTImageRunner(BaseImageRunner):
                 assert isinstance(env, MultiStepWrapper)
                 # env.seed(seed)
                 print('random_trans_eval',random_trans_eval)
-                env.seed((seed, random_trans_eval))
+                print('random_rot_eval',random_rot_eval)
+                env.seed((seed, random_trans_eval,random_rot_eval))
             
             env_seeds.append(seed)
             env_prefixs.append('test/')

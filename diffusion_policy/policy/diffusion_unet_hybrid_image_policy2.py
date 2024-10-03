@@ -120,7 +120,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         else:
             channel = 3
         self.channel = channel
-        self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon, n_hidden=32*2)
+        self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon, n_hidden=48)
         # self.obs_encoder = Unet2D(n_input_channel=n_obs_steps*channel, n_output_channel=horizon)
 
 
