@@ -339,7 +339,6 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                         # sample transformation matrix
                         theta_sigma = 2 * np.pi / 6
                         theta = np.random.normal(0, theta_sigma)
-                        theta = np.pi/2
                         # print(theta/np.pi * 180)
                         rotm = np.array([[np.cos(-theta),-np.sin(-theta)],
                                          [np.sin(-theta), np.cos(-theta)]])
@@ -466,10 +465,10 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             # visualize_pusht_images_sequnece(vis_image.cpu(), pos=vis_pix.cpu(), title='transformation', word='sample', transpose=True)
             
             # import matplotlib.pyplot as plt
-            # for i in range(len(vis_image)):
+            # for i in range(3):
             #     img = vis_image[i]
             #     pos_pix = vis_pix[i]
-            #     img[:,pos_pix[0]-3:pos_pix[0]+4,pos_pix[1]-3:pos_pix[1]+4]=0
+            #     img[:,pos_pix[0]-1:pos_pix[0]+2,pos_pix[1]-1:pos_pix[1]+2]=0
 
             #     # img_pix = agent_pos_img_pix[i]
             #     # img[:,img_pix[0]-3:img_pix[0]+4,img_pix[1]-3:img_pix[1]+4]=0.5
