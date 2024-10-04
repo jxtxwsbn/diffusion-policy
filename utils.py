@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-def visualize_pusht_images_sequnece(images, pos=None, action=None, title=None, rows=4, cols=4, softmax=False,word='step'):
+def visualize_pusht_images_sequnece(images, pos=None, action=None, title=None, rows=4, cols=4, softmax=False,word='step',transpose=False):
     """
     Visualize a batch of 16 images with dimensions 16 x 3 x 96 x 96.
 
@@ -33,10 +33,14 @@ def visualize_pusht_images_sequnece(images, pos=None, action=None, title=None, r
         img = np.transpose(image, (1, 2, 0))
         if pos is not None:
             x1, y1 = pos[i]
+            if transpose:
+                y1, x1 = pos[i]
             circle = plt.Circle((x1, y1), radius=5, color='red', fill=False, linewidth=2)
             ax.add_patch(circle)
         if action is not None:
             x2, y2 = action[i]
+            if transpose:
+                y2, x2 = action[i]
             ax.plot(x2, y2, marker='x', color='white', markersize=10, markeredgewidth=2)
         # Clip the pixel values between 0 and 1 if necessary
         img = np.clip(img, 0, 1)
@@ -96,5 +100,13 @@ def xy2pix(xy, h=95, w=95):
     pixc = x + w/2
     pix = torch.cat((pixr,pixc),dim=-1)
     pix = torch.round(pix)
+    pix = pix.to(torch.long)
+    return pix
+
+def transposerc(pos_pix, h=95, w=95):
+    pixc = pos_pix[..., 0:1]
+    pixr = pos_pix[..., 1:]
+    
+    pix = torch.cat((pixr,pixc),dim=-1)
     pix = pix.to(torch.long)
     return pix

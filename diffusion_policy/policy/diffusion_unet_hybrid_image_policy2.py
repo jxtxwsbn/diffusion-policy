@@ -19,7 +19,7 @@ import diffusion_policy.model.vision.crop_randomizer as dmvc
 from diffusion_policy.common.pytorch_util import dict_apply, replace_submodules
 from unet import ResUNet
 # from unet import Unet2D
-from utils import visualize_pusht_images_sequnece, pos2pixel, pixel2map, pixel2pos, pix2xy, xy2pix
+from utils import visualize_pusht_images_sequnece, pos2pixel, pixel2map, pixel2pos, pix2xy, xy2pix, transposerc
 import torchvision.transforms.functional as torchvisionf
 import numpy as np
 import einops
@@ -244,7 +244,9 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         # print('action pred',action_pred.shape)
         # visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=False)
         # visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=True)
-
+        
+        # from pixel action to space action
+        action_pred = transposerc(action_pred)
         action_pred = pixel2pos(action_pred)
         
 
@@ -313,6 +315,9 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             label_pix = pos2pixel(nactions)
             agent_pos_pix = pos2pixel(nobs['agent_pos'])
 
+            label_pix = transposerc(label_pix)
+            agent_pos_pix = transposerc(agent_pos_pix)
+
             aug_step_max = 0
             if self.trans_aug:
                 aug_step_max += 10
@@ -334,8 +339,10 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                         # sample transformation matrix
                         theta_sigma = 2 * np.pi / 6
                         theta = np.random.normal(0, theta_sigma)
-                        rotm = np.array([[np.cos(theta),-np.sin(theta)],
-                                         [np.sin(theta), np.cos(theta)]])
+                        theta = np.pi/2
+                        # print(theta/np.pi * 180)
+                        rotm = np.array([[np.cos(-theta),-np.sin(-theta)],
+                                         [np.sin(-theta), np.cos(-theta)]])
                         rotm = torch.from_numpy(rotm).float().to(label_pix.device)
                         theta_degree = (theta * 180)/np.pi
                         # rotate agent pos
@@ -367,8 +374,12 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                             tran_y = np.round(trans[1])
 
                     
-                    agent_pos_pix_new[:,:,0] = agent_pos_pix_new[:,:,0] + tran_x
-                    agent_pos_pix_new[:,:,1] = agent_pos_pix_new[:,:,1] + tran_y
+                    # agent_pos_pix_new[:,:,0] = agent_pos_pix_new[:,:,0] + tran_x
+                    # agent_pos_pix_new[:,:,1] = agent_pos_pix_new[:,:,1] + tran_y
+
+                    agent_pos_pix_new[:,:,0] = agent_pos_pix_new[:,:,0] + tran_y
+                    agent_pos_pix_new[:,:,1] = agent_pos_pix_new[:,:,1] + tran_x
+
                     label_pix_new[:,:,0] = label_pix_new[:,:,0] + tran_x
                     label_pix_new[:,:,1] = label_pix_new[:,:,1] + tran_y
 
@@ -388,6 +399,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                 if valid:
                     label_pix = label_pix_new
                     agent_pos_pix = agent_pos_pix_new
+                    # clockwise direction
                     nobs['image'] = torchvisionf.affine(nobs['image'], angle=theta_degree, translate=[tran_x,tran_y], scale=1, shear=0)
 
             if self.use_pos_map:
@@ -404,53 +416,67 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                 nobs['image'] = nobs['image'].reshape(batch_size, self.n_obs_steps*self.channel, *imge_shape[-2:])
                 # print(nobs['image'].shape)
             
-            crop_size = imge_shape[-1]
-            center_img = F.pad(nobs['image'],pad=(imge_shape[-1]//2,imge_shape[-1]//2, imge_shape[-2]//2, imge_shape[-2]//2))
-            center_img = rearrange(center_img, 'b (o n) h w -> b o n h w', o=self.n_obs_steps)
-            bs, to, c, h, w = center_img.shape
+            
+            # #------------------
+            # crop_size = imge_shape[-1]
+            # center_img = F.pad(nobs['image'],pad=(imge_shape[-1]//2,imge_shape[-1]//2, imge_shape[-2]//2, imge_shape[-2]//2))
+            # center_img = rearrange(center_img, 'b (o n) h w -> b o n h w', o=self.n_obs_steps)
+            # bs, to, c, h, w = center_img.shape
+            # # print(bs,to,crop_size)
+            # cano_imgs = []
+            # for i in range(bs):
+            #     for j in range(to):
+            #         top_row = agent_pos_pix[i,j,0]
+            #         left_col = agent_pos_pix[i,j,1]
+            #         img = center_img[i,j].clone()
+            #         print(img.shape)
+            #         import matplotlib.pyplot as plt
+            #         img[:,top_row.item()+48-3:top_row.item()+48+3,left_col.item()+48-3:left_col.item()+48+3]=0
+            #         plt.imshow(img.cpu().permute(1,2,0).numpy())
+            #         plt.plot(top_row.item()+48, left_col.item()+48, marker='x', color='red', markersize=10, markeredgewidth=2)
+            #         print(top_row+48, left_col+48)
+            #         plt.show()
+            #         img = img[:, top_row.item() : top_row.item()+96, left_col.item() : left_col.item() + 96]
+            #         print(img.shape)
+            #         print(top_row, left_col)
+            #         plt.imshow(img.cpu().permute(1,2,0).numpy())
+            #         plt.show()
 
-            # print(bs,to,crop_size)
-            cano_imgs = []
-            for i in range(bs):
-                for j in range(to):
-                    top_row = agent_pos_pix[i,j,0]
-                    left_col = agent_pos_pix[i,j,1]
-                    img = center_img[i,j].clone()
-                    print(img.shape)
-                    import matplotlib.pyplot as plt
-                    img[:,top_row.item()+48-3:top_row.item()+48+3,left_col.item()+48-3:left_col.item()+48+3]=0
-                    plt.imshow(img.cpu().permute(1,2,0).numpy())
-                    plt.plot(top_row.item()+48, left_col.item()+48, marker='x', color='red', markersize=10, markeredgewidth=2)
-                    print(top_row+48, left_col+48)
-                    plt.show()
-                    img = img[:, top_row.item() : top_row.item()+96, left_col.item() : left_col.item() + 96]
-                    print(img.shape)
-                    print(top_row, left_col)
-                    plt.imshow(img.cpu().permute(1,2,0).numpy())
-                    plt.show()
 
-
-                    img = img.unsqueeze(dim=0)
+            #         img = img.unsqueeze(dim=0)
                     
 
-                    cano_imgs.append(img)
-            cano_imgs = torch.cat(cano_imgs,dim=0)
-            a = torch.arange(10)
-            print(a.reshape(-1,2))
-            a = torch.tensor([[1,2],[3,4],[5,6],[7,8]])
-            print(cano_imgs.shape)
-            cano_imgs = rearrange(cano_imgs, '(b o) n h w -> b (o n) h w', b=bs)
-            # center_img = center_img[:,:,]
-            print(cano_imgs.shape,'===')
+            #         cano_imgs.append(img)
+            # cano_imgs = torch.cat(cano_imgs,dim=0)
+            # a = torch.arange(10)
+            # print(a.reshape(-1,2))
+            # a = torch.tensor([[1,2],[3,4],[5,6],[7,8]])
+            # print(cano_imgs.shape)
+            # cano_imgs = rearrange(cano_imgs, '(b o) n h w -> b (o n) h w', b=bs)
+            # # center_img = center_img[:,:,]
+            # print(cano_imgs.shape,'===')
+            # #-----------------------------
 
 
             # print('aug', valid)
-            vis_image = nobs['image'][:16,0:3,...]
-            # vis_image = center_img[:16,0,0:3,...]
-            # vis_image = cano_imgs[:16,0:3,...]
-            vis_pix = agent_pos_pix[:16,0,:]
-            visualize_pusht_images_sequnece(vis_image.cpu(), pos=vis_pix.cpu()+48, title='transformation', word='sample')
+            # vis_image = nobs['image'][:16,0:3,...]
+            # # vis_image = center_img[:16,0,0:3,...]
+            # # vis_image = cano_imgs[:16,0:3,...]
+            # vis_pix = agent_pos_pix[:16,0,:]
+            # visualize_pusht_images_sequnece(vis_image.cpu(), pos=vis_pix.cpu(), title='transformation', word='sample', transpose=True)
             
+            # import matplotlib.pyplot as plt
+            # for i in range(len(vis_image)):
+            #     img = vis_image[i]
+            #     pos_pix = vis_pix[i]
+            #     img[:,pos_pix[0]-3:pos_pix[0]+4,pos_pix[1]-3:pos_pix[1]+4]=0
+
+            #     # img_pix = agent_pos_img_pix[i]
+            #     # img[:,img_pix[0]-3:img_pix[0]+4,img_pix[1]-3:img_pix[1]+4]=0.5
+
+            #     plt.imshow(img.cpu().permute(1,2,0).numpy())
+            #     plt.plot(pos_pix[0].cpu().numpy(), pos_pix[1].cpu().numpy(), marker='x', color='red', markersize=10, markeredgewidth=2)
+            #     plt.show()
             
             pre_action_map, g = self.obs_encoder(obs=nobs)
             if vis:
