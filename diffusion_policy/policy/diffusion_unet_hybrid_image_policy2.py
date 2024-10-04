@@ -404,11 +404,52 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                 nobs['image'] = nobs['image'].reshape(batch_size, self.n_obs_steps*self.channel, *imge_shape[-2:])
                 # print(nobs['image'].shape)
             
-            
+            crop_size = imge_shape[-1]
+            center_img = F.pad(nobs['image'],pad=(imge_shape[-1]//2,imge_shape[-1]//2, imge_shape[-2]//2, imge_shape[-2]//2))
+            center_img = rearrange(center_img, 'b (o n) h w -> b o n h w', o=self.n_obs_steps)
+            bs, to, c, h, w = center_img.shape
+
+            # print(bs,to,crop_size)
+            cano_imgs = []
+            for i in range(bs):
+                for j in range(to):
+                    top_row = agent_pos_pix[i,j,0]
+                    left_col = agent_pos_pix[i,j,1]
+                    img = center_img[i,j].clone()
+                    print(img.shape)
+                    import matplotlib.pyplot as plt
+                    img[:,top_row.item()+48-3:top_row.item()+48+3,left_col.item()+48-3:left_col.item()+48+3]=0
+                    plt.imshow(img.cpu().permute(1,2,0).numpy())
+                    plt.plot(top_row.item()+48, left_col.item()+48, marker='x', color='red', markersize=10, markeredgewidth=2)
+                    print(top_row+48, left_col+48)
+                    plt.show()
+                    img = img[:, top_row.item() : top_row.item()+96, left_col.item() : left_col.item() + 96]
+                    print(img.shape)
+                    print(top_row, left_col)
+                    plt.imshow(img.cpu().permute(1,2,0).numpy())
+                    plt.show()
+
+
+                    img = img.unsqueeze(dim=0)
+                    
+
+                    cano_imgs.append(img)
+            cano_imgs = torch.cat(cano_imgs,dim=0)
+            a = torch.arange(10)
+            print(a.reshape(-1,2))
+            a = torch.tensor([[1,2],[3,4],[5,6],[7,8]])
+            print(cano_imgs.shape)
+            cano_imgs = rearrange(cano_imgs, '(b o) n h w -> b (o n) h w', b=bs)
+            # center_img = center_img[:,:,]
+            print(cano_imgs.shape,'===')
+
+
             # print('aug', valid)
-            # vis_image = nobs['image'][:16,0:3,...]
-            # vis_pix = agent_pos_pix[:16,0,:]
-            # visualize_pusht_images_sequnece(vis_image.cpu(), pos=vis_pix.cpu(), title='transformation', word='sample')
+            vis_image = nobs['image'][:16,0:3,...]
+            # vis_image = center_img[:16,0,0:3,...]
+            # vis_image = cano_imgs[:16,0:3,...]
+            vis_pix = agent_pos_pix[:16,0,:]
+            visualize_pusht_images_sequnece(vis_image.cpu(), pos=vis_pix.cpu()+48, title='transformation', word='sample')
             
             
             pre_action_map, g = self.obs_encoder(obs=nobs)
