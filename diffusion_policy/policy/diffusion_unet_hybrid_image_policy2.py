@@ -280,6 +280,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         if self.relative:
             # cano_label_pix = label_pix - base_agent_pos_pix + crop_size//2
             action_pred = (action_pred - crop_size//2) + base_agent_pos_pix
+            action_pred = action_pred.clamp(min=0,max=95)
         # print('action pred',action_pred.shape)
         # visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=False)
         # visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=True)
