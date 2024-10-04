@@ -74,6 +74,7 @@ def pixel2pos(pix):
 
 def pixel2map(pix,h=96, w=96):
     # pix shape (n, 2)
+    assert len(pix.shape) == 2 and pix.shape[-1]==2
     length = pix.shape[0]
     row_index = torch.arange(length).to(pix.device)
     one_hot_map = torch.zeros(length, h*w).to(pix.device)
@@ -104,9 +105,8 @@ def xy2pix(xy, h=95, w=95):
     return pix
 
 def transposerc(pos_pix, h=95, w=95):
-    pixc = pos_pix[..., 0:1]
-    pixr = pos_pix[..., 1:]
     
-    pix = torch.cat((pixr,pixc),dim=-1)
-    pix = pix.to(torch.long)
-    return pix
+    new_pos_pix = pos_pix.clone()
+    new_pos_pix[..., 0] = pos_pix[..., 1]
+    new_pos_pix[..., 1] = pos_pix[..., 0]    
+    return new_pos_pix

@@ -122,7 +122,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         else:
             channel = 3
         self.channel = channel
-        self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon, n_hidden=32)
+        self.obs_encoder = ResUNet(n_input_channel=n_obs_steps*channel, n_output_channel=horizon, n_hidden=48)
         # self.obs_encoder = Unet2D(n_input_channel=n_obs_steps*channel, n_output_channel=horizon)
 
 
@@ -258,14 +258,15 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                 nobs['image'] = nobs['image'].reshape(batch_size, self.n_obs_steps*self.channel, *imge_shape[-2:])
                 # print(nobs['image'].shape)
                 #         
+            
             pre_action_map, g = self.obs_encoder(obs=nobs)
             pre_action_map_shape = pre_action_map.shape
             # print('action map shape',pre_action_map_shape)
             # pre_action_map2 = pre_action_map
         
         # inference action
-        pre_action_map = pre_action_map.reshape(-1,pre_action_map_shape[-1]*pre_action_map_shape[-2])
-        
+        # pre_action_map = pre_action_map.reshape(-1,pre_action_map_shape[-1]*pre_action_map_shape[-2])
+        pre_action_map = rearrange(pre_action_map, 'b t h w -> (b t) (h w)')
         best_action_index = torch.max(pre_action_map,dim=1,keepdim=False)
         # print(torch.max(pre_action_map[0]))
         # print('max value',best_action_index[0][0])
@@ -273,9 +274,10 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         # action_pre_x = best_action_index // pre_action_map_shape[-1]
         action_pre_x = torch.div(best_action_index,pre_action_map_shape[-1],rounding_mode='floor')
         action_pre_y = best_action_index % pre_action_map_shape[-1]
-        action_pred = torch.stack((action_pre_x,action_pre_y),dim=1)
-        action_dim = action_pred.shape[-1]
-        action_pred = action_pred.reshape(pre_action_map_shape[0], pre_action_map_shape[1], action_dim)
+        action_pred = torch.stack((action_pre_x, action_pre_y),dim=1)
+        # print(action_pred.shape)
+        # action_pred = action_pred.reshape(pre_action_map_shape[0], pre_action_map_shape[1], action_dim)
+        action_pred = rearrange(action_pred, '(b t) d -> b t d', b=pre_action_map_shape[0])
         
         if self.relative:
             # cano_label_pix = label_pix - base_agent_pos_pix + crop_size//2
@@ -513,8 +515,6 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             # #-----------------------------
             # print('aug', valid)
             # vis_image = nobs['image'][:16,0:3,...]
-            # # vis_image = center_img[:16,0,0:3,...]
-            # # vis_image = cano_imgs[:16,0:3,...]
             # vis_pix = agent_pos_pix[:16,0,:]
             # visualize_pusht_images_sequnece(vis_image.cpu(), pos=vis_pix.cpu(), title='transformation', word='sample', transpose=True)
 
@@ -523,36 +523,17 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             #     img = vis_image[i]
             #     pos_pix = vis_pix[i]
             #     img[:,pos_pix[0]-1:pos_pix[0]+2,pos_pix[1]-1:pos_pix[1]+2]=0
-
-            #     # img_pix = agent_pos_img_pix[i]
-            #     # img[:,img_pix[0]-3:img_pix[0]+4,img_pix[1]-3:img_pix[1]+4]=0.5
-
             #     plt.imshow(img.cpu().permute(1,2,0).numpy())
-            #     plt.plot(pos_pix[0].cpu().numpy(), pos_pix[1].cpu().numpy(), marker='x', color='red', markersize=10, markeredgewidth=2)
+            #     plt.plot(pos_pix[1].cpu().numpy(), pos_pix[0].cpu().numpy(), marker='x', color='red', markersize=10, markeredgewidth=2)
+            #     for j in range(16):
+            #         act_pix = label_pix[i,j]                
+            #         plt.plot(act_pix[1].cpu().numpy(), act_pix[0].cpu().numpy(), marker='x', color=(1-j/16,0,0), markersize=10, markeredgewidth=2)
             #     plt.show()
             # #-----------------------------
             
             pre_action_map, g = self.obs_encoder(obs=nobs)
-            if vis:
-                visualize_pusht_images_sequnece(pre_action_map.unsqueeze(dim=2)[0].detach().clone().cpu(), pos=pos_pix.cpu(), action=action_pix.cpu(), title='before normalization')
-                print(pre_action_map.shape)
-                # for i in range(10):
-                #     print(torch.argmax(pre_action_map[0][i]))
             pre_action_map_shape = pre_action_map.shape
-            pre_action_map = pre_action_map.reshape(-1,pre_action_map_shape[-1]*pre_action_map_shape[-2])
-            
-            # inference action
-            # best_action_index = torch.max(pre_action_map,dim=1,keepdim=False)[1]
-            # print(best_action_index.shape)
-            # action_pre_x = best_action_index // pre_action_map_shape[-1]
-            # action_pre_y = best_action_index % pre_action_map_shape[-1]
-            # action_pred = torch.stack((action_pre_x,action_pre_y),dim=1)
-            # print(action_pred[:16,:])
-            # print(action_pred.shape)
-            # action_dim = action_pred.shape[-1]
-            # action_pred = action_pred.reshape(pre_action_map_shape[0],pre_action_map_shape[1],action_dim)
-            # print(action_pred[0,:,:])
-            # action_pred = pixel2pos(action_pred)
+            pre_action_map = pre_action_map.reshape(-1, pre_action_map_shape[-1]*pre_action_map_shape[-2])
 
             label = pixel2map(label_pix.reshape(-1, label_pix.shape[-1]))
             loss = F.cross_entropy(input=pre_action_map,target=label)
