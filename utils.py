@@ -86,6 +86,7 @@ def pixel2map(pix,h=96, w=96):
     return one_hot_map
 
 def pix2xy(pix, h=95, w=95):
+    pix = pix.to(torch.float)
     pixr = pix[..., 0:1]
     pixc = pix[..., 1:]
     x = pixc - w/2

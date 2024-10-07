@@ -171,12 +171,12 @@ training:
   max_val_steps: null
   num_epochs: 251
   resume: true
-  rollout_every: 50
+  rollout_every: 10
   sample_every: 5
   seed: 42
   tqdm_interval_sec: 1.0
   use_ema: true
-  val_every: 1
+  val_every: 10
 val_dataloader:
   batch_size: 64
   num_workers: 8
