@@ -289,7 +289,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         
         # from pixel action to space action
 
-        # action_pred = transposerc(action_pred)
+        action_pred = transposerc(action_pred)
         action_pred = pixel2pos(action_pred)
         # get action
         start = To - 1
@@ -420,8 +420,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                     agent_pos_pix_new[:,:,0] = agent_pos_pix_new[:,:,0] + tran_y
                     agent_pos_pix_new[:,:,1] = agent_pos_pix_new[:,:,1] + tran_x
 
-                    label_pix_new[:,:,0] = label_pix_new[:,:,0] + tran_x
-                    label_pix_new[:,:,1] = label_pix_new[:,:,1] + tran_y
+                    label_pix_new[:,:,0] = label_pix_new[:,:,0] + tran_y
+                    label_pix_new[:,:,1] = label_pix_new[:,:,1] + tran_x
 
                     pos_action_pix = torch.concat((agent_pos_pix_new,label_pix_new),dim=1)
                     # print(pos_action_pix.shape)
@@ -442,8 +442,8 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                     # clockwise direction
                     nobs['image'] = torchvisionf.affine(nobs['image'], angle=theta_degree, translate=[tran_x,tran_y], scale=1, shear=0)
 
-            label_pix = transposerc(label_pix)
-            agent_pos_pix = transposerc(agent_pos_pix)
+            # label_pix = transposerc(label_pix)
+            # agent_pos_pix = transposerc(agent_pos_pix)
 
 
             if self.relative:
