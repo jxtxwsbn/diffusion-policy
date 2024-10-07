@@ -288,10 +288,9 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         # visualize_pusht_images_sequnece(pre_action_map2.cpu().unsqueeze(dim=2)[0], action=action_pred.cpu()[0],softmax=True)
         
         # from pixel action to space action
-        action_pred = transposerc(action_pred)
-        action_pred = pixel2pos(action_pred)
-        
 
+        # action_pred = transposerc(action_pred)
+        action_pred = pixel2pos(action_pred)
         # get action
         start = To - 1
         end = start + self.n_action_steps
@@ -443,7 +442,10 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                     # clockwise direction
                     nobs['image'] = torchvisionf.affine(nobs['image'], angle=theta_degree, translate=[tran_x,tran_y], scale=1, shear=0)
 
-            
+            label_pix = transposerc(label_pix)
+            agent_pos_pix = transposerc(agent_pos_pix)
+
+
             if self.relative:
                 #------------------
                 crop_size = imge_shape[-1]
@@ -528,6 +530,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             #     for j in range(16):
             #         act_pix = label_pix[i,j]                
             #         plt.plot(act_pix[1].cpu().numpy(), act_pix[0].cpu().numpy(), marker='x', color=(1-j/16,0,0), markersize=10, markeredgewidth=2)
+            #         plt.plot(act_pix[0].cpu().numpy(), act_pix[1].cpu().numpy(), marker='x', color=(0, 1-j/16,0), markersize=10, markeredgewidth=2)
             #     plt.show()
             # #-----------------------------
             

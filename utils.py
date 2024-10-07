@@ -95,8 +95,7 @@ def pix2xy(pix, h=95, w=95):
 
 def xy2pix(xy, h=95, w=95):
     x = xy[..., 0:1]
-    y = xy[..., 1:]
-    
+    y = xy[..., 1:]    
     pixr = h/2 - y
     pixc = x + w/2
     pix = torch.cat((pixr,pixc),dim=-1)
@@ -109,4 +108,12 @@ def transposerc(pos_pix, h=95, w=95):
     new_pos_pix = pos_pix.clone()
     new_pos_pix[..., 0] = pos_pix[..., 1]
     new_pos_pix[..., 1] = pos_pix[..., 0]    
+    return new_pos_pix
+
+
+def transposerc2(pos_pix, h=95, w=95):
+    
+    new_pos_pix = pos_pix.clone()
+    new_pos_pix[..., 0] = h - pos_pix[..., 0]
+    new_pos_pix[..., 1] = w - pos_pix[..., 1]    
     return new_pos_pix

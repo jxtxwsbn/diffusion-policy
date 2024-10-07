@@ -118,8 +118,8 @@ class PushTImageRunner(BaseImageRunner):
                 # set seed
                 assert isinstance(env, MultiStepWrapper)
                 # env.seed(seed)
-                print('random_trans_eval',random_trans_eval)
-                print('random_rot_eval',random_rot_eval)
+                # print('random_trans_eval',random_trans_eval)
+                # print('random_rot_eval',random_rot_eval)
                 env.seed((seed, random_trans_eval,random_rot_eval))
             
             env_seeds.append(seed)
