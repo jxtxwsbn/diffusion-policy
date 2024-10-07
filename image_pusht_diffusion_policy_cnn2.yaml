@@ -180,7 +180,7 @@ training:
   seed: 42
   tqdm_interval_sec: 1.0
   use_ema: true
-  val_every: 1
+  val_every: 10
 val_dataloader:
   batch_size: 64
   num_workers: 8
