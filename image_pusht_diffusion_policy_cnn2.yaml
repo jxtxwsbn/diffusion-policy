@@ -65,7 +65,8 @@ policy:
   - 2048
   eval_fixed_crop: true
   trans_aug: true
-  rot_aug: true
+  rot_aug: false
+  c4_aug: true
   relative: false
   use_pos_map: false
   # use_pos_value: false

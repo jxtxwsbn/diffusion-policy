@@ -45,6 +45,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             # use_pos_val=False,
             trans_aug = False,
             rot_aug = False,
+            c4_aug = False,
             relative=False,
             # parameters passed to step
             **kwargs):
@@ -112,6 +113,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
         self.obs_as_global_cond = obs_as_global_cond
         self.trans_aug = trans_aug
         self.rot_aug = rot_aug
+        self.c4_aug = c4_aug
         self.use_pos_map = use_pos_map
         self.relative = relative
         self.kwargs = kwargs
@@ -368,37 +370,43 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             
             
             if aug_step_max >0:
+                
                 aug_step = 0
+                
                 while True:
                     agent_pos_pix_new = agent_pos_pix.clone()
                     label_pix_new = label_pix.clone()
                     tran_x = 0
                     tran_y = 0
-                    theta_degree = 0
+                    theta = 0
+                    ci = 0
 
                     if self.rot_aug:
-                        # sample c4 rotations
-                        ci = np.random.randint(low=0, high=4)
-                        # print(ci)
-                        ci = ci * np.pi/2
                         # sample transformation matrix
                         theta_sigma = 2 * np.pi / 6
                         theta = np.random.normal(0, theta_sigma)
-                        theta = theta+ci
-                        # print(theta/np.pi * 180)
-                        rotm = np.array([[np.cos(theta),-np.sin(theta)],
-                                         [np.sin(theta), np.cos(theta)]])
-                        rotm = torch.from_numpy(rotm).float().to(label_pix.device)
-                        theta_degree = (theta * 180)/np.pi
-                        # rotate agent pos
-                        pos_xy = pix2xy(agent_pos_pix_new)
-                        pos_xy = torch.einsum('bij, jk -> bik', pos_xy, rotm.T)
-                        agent_pos_pix_new = xy2pix(pos_xy)
+                    
+                    if self.c4_aug:
+                        # sample c4 rotations
+                        ci = np.random.randint(low=0, high=4)
+                        # print(ci)
+                        ci = ci * np.pi/2    
+                        
+                    theta = theta+ci
+                    # print(theta/np.pi * 180)
+                    rotm = np.array([[np.cos(theta),-np.sin(theta)],
+                                     [np.sin(theta), np.cos(theta)]])
+                    rotm = torch.from_numpy(rotm).float().to(label_pix.device)
+                    theta_degree = (theta * 180)/np.pi
+                    # rotate agent pos
+                    pos_xy = pix2xy(agent_pos_pix_new)
+                    pos_xy = torch.einsum('bij, jk -> bik', pos_xy, rotm.T)
+                    agent_pos_pix_new = xy2pix(pos_xy)
 
-                        # rotat action label
-                        action_xy = pix2xy(label_pix_new)
-                        action_xy = torch.einsum('bij, jk -> bik', action_xy, rotm.T)
-                        label_pix_new = xy2pix(action_xy)
+                    # rotat action label
+                    action_xy = pix2xy(label_pix_new)
+                    action_xy = torch.einsum('bij, jk -> bik', action_xy, rotm.T)
+                    label_pix_new = xy2pix(action_xy)
 
 
                     if self.trans_aug:
