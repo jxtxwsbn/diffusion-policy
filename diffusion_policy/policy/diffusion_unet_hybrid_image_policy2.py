@@ -377,12 +377,17 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                     theta_degree = 0
 
                     if self.rot_aug:
+                        # sample c4 rotations
+                        ci = np.random.randint(low=0, high=4)
+                        # print(ci)
+                        ci = ci * np.pi/2
                         # sample transformation matrix
                         theta_sigma = 2 * np.pi / 6
                         theta = np.random.normal(0, theta_sigma)
+                        theta = theta+ci
                         # print(theta/np.pi * 180)
-                        rotm = np.array([[np.cos(-theta),-np.sin(-theta)],
-                                         [np.sin(-theta), np.cos(-theta)]])
+                        rotm = np.array([[np.cos(theta),-np.sin(theta)],
+                                         [np.sin(theta), np.cos(theta)]])
                         rotm = torch.from_numpy(rotm).float().to(label_pix.device)
                         theta_degree = (theta * 180)/np.pi
                         # rotate agent pos
@@ -439,12 +444,11 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
                 if valid:
                     label_pix = label_pix_new
                     agent_pos_pix = agent_pos_pix_new
-                    # clockwise direction
-                    nobs['image'] = torchvisionf.affine(nobs['image'], angle=theta_degree, translate=[tran_x,tran_y], scale=1, shear=0)
+                    # torchvision use clockwise direction
+                    nobs['image'] = torchvisionf.affine(nobs['image'], angle=-theta_degree, translate=[tran_x,tran_y], scale=1, shear=0)
 
             # label_pix = transposerc(label_pix)
             # agent_pos_pix = transposerc(agent_pos_pix)
-
 
             if self.relative:
                 #------------------
@@ -530,7 +534,7 @@ class DiffusionUnetHybridImagePolicy(BaseImagePolicy):
             #     for j in range(16):
             #         act_pix = label_pix[i,j]                
             #         plt.plot(act_pix[1].cpu().numpy(), act_pix[0].cpu().numpy(), marker='x', color=(1-j/16,0,0), markersize=10, markeredgewidth=2)
-            #         plt.plot(act_pix[0].cpu().numpy(), act_pix[1].cpu().numpy(), marker='x', color=(0, 1-j/16,0), markersize=10, markeredgewidth=2)
+            #         # plt.plot(act_pix[0].cpu().numpy(), act_pix[1].cpu().numpy(), marker='x', color=(0, 1-j/16,0), markersize=10, markeredgewidth=2)
             #     plt.show()
             # #-----------------------------
             
